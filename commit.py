@@ -7,42 +7,43 @@ import time
 import user
 from config import ConfigError
 import sys
+import ignore
 
 
-def init_if_necessary():
+def init_if_necessary(root: str):
     init_dirs = [ # a new repo should have these directories
-        r"./.git/",
-        r"./.git/branches",
-        r"./.git/hooks",
-        r"./.git/objects",
-        r"./.git/objects/pack",
-        r"./.git/objects/info",
-        r"./.git/info",
-        r"./.git/refs",
-        r"./.git/refs/tags",
-        r"./.git/refs/heads",
+        r"/.git/",
+        r"/.git/branches",
+        r"/.git/hooks",
+        r"/.git/objects",
+        r"/.git/objects/pack",
+        r"/.git/objects/info",
+        r"/.git/info",
+        r"/.git/refs",
+        r"/.git/refs/tags",
+        r"/.git/refs/heads",
     ]
 
     init_files = [ # a new repo should have these files (keys) containing this content (values)
-        (r"./.git/HEAD", "ref: refs/heads/main\n"),
-        (r"./.git/config", "[core]\n\trepositoryformatversion = 0\n\tfilemode = true\n\tbare = false\n\tlogallrefupdates = true\n"),
-        (r"./.git/description", ""),
-        (r"./.git/info/exclude", "")
+        (r"/.git/HEAD", "ref: refs/heads/main\n"),
+        (r"/.git/config", "[core]\n\trepositoryformatversion = 0\n\tfilemode = true\n\tbare = false\n\tlogallrefupdates = true\n"),
+        (r"/.git/description", ""),
+        (r"/.git/info/exclude", "")
     ]
 
-    if os.path.isdir("./.git"): # if .git exists, assume it's a valid repo and return
+    if os.path.isdir(root + "/.git"): # if .git exists, assume it's a valid repo and return
         return
 
     for dir in init_dirs:
-        os.mkdir(dir)
+        os.mkdir(root + dir)
 
     for (file, content) in init_files:
-        with open(file, "w") as f:
+        with open(root + file, "w") as f:
             f.write(content)
 
 # Given a path, transform a file to a blob object. If the object isn't already
 # stored in the repo, add it. Return the hash of the object as a string
-def add_blob_object(path: str) -> bytes:
+def add_blob_object(path: str, options) -> bytes:
     with open(path, "rb") as f:
         file_content = f.read()
     obj_content = bytearray()
@@ -54,7 +55,7 @@ def add_blob_object(path: str) -> bytes:
     obj_hash_str = binascii.hexlify(obj_hash).decode()
     obj_content = zlib.compress(obj_content)
 
-    obj_dir_path = "./.git/objects/" + obj_hash_str[0:2] + '/'
+    obj_dir_path = options.root + "/.git/objects/" + obj_hash_str[0:2] + '/'
     obj_path = obj_dir_path + obj_hash_str[2:]
 
     if os.path.isfile(obj_path): #don't try to add the object again
@@ -75,18 +76,17 @@ def add_blob_object(path: str) -> bytes:
 # path supplied points to a directory which doesn't have any files, and whose
 # subdirectories don't contain any files, no tree object is created and None
 # is returned
-def add_tree_object(path: str) -> bytes | None:
-    ignore_paths = [".git", "__pycache__"]
+def add_tree_object(path: str, options) -> bytes | None:
     objects = []
     dir_content = os.listdir(path)
     dir_content.sort()
-    for entry_name in filter(lambda x: x not in ignore_paths, dir_content):
+    for entry_name in filter(lambda x: x not in options.ignores, dir_content):
         p = path + '/' + entry_name
         if os.path.isdir(p):
-            if tree := add_tree_object(p):
+            if tree := add_tree_object(p, options):
                 objects.append((40000, entry_name, tree)) # 40000 = directory
         elif os.path.isfile(p):
-            objects.append((get_file_type(p), entry_name, add_blob_object(p)))
+            objects.append((get_file_type(p), entry_name, add_blob_object(p, options)))
     if len(objects) == 0:
         return None
     tree_content = bytearray()
@@ -98,7 +98,7 @@ def add_tree_object(path: str) -> bytes | None:
     tree_hash = hash_array_of_bytes(tree_content)
     tree_hash_str = binascii.hexlify(tree_hash).decode()
 
-    obj_dir_path = "./.git/objects/" + tree_hash_str[0:2]
+    obj_dir_path = f"{options.root}/.git/objects/" + tree_hash_str[0:2]
     tree_obj_path = obj_dir_path + '/' + tree_hash_str[2:]
 
     if os.path.isfile(tree_obj_path):
@@ -138,12 +138,12 @@ def get_time_info() -> (int, int):
     return (int(time.time()), offset)
 
 # Add all of the objects in the cwd and create a commit object referencing them.
-def add_commit_object(parent: bytes | None, message: str) -> bytes | None:
-    user_name, user_email = user.get_user_info('.git/config')
+def add_commit_object(parent: bytes | None, options) -> bytes | None:
+    user_name, user_email = user.get_user_info(f'{options.root}/.git/config')
     if not user_name or not user_email:
         raise ConfigError("Username and email missing, please set locally to allow creating commits.")
 
-    root_tree = add_tree_object(".")
+    root_tree = add_tree_object(options.root, options)
     if not root_tree:
         return None
 
@@ -155,13 +155,13 @@ def add_commit_object(parent: bytes | None, message: str) -> bytes | None:
         commit_content += f"parent ".encode() + binascii.hexlify(parent) + b'\n'
     commit_content += f"author {user_name} <{user_email}> {curr_time} {timezone:+05}\n".encode()
     commit_content += f"committer {user_name} <{user_email}> {curr_time} {timezone:+05}\n".encode()
-    commit_content += f"\n\n{message}\n".encode()
+    commit_content += f"\n\n{options.message}\n".encode()
 
     commit_content = bytes(f"commit {len(commit_content)}\0".encode() + commit_content)
     commit_hash = hash_array_of_bytes(commit_content)
     commit_hash_str = binascii.hexlify(commit_hash).decode()
 
-    obj_dir_path = "./.git/objects/" + commit_hash_str[0:2]
+    obj_dir_path = f"{options.root}/.git/objects/" + commit_hash_str[0:2]
     commit_path = obj_dir_path + '/' + commit_hash_str[2:]
 
     if os.path.isfile(commit_path):
@@ -177,12 +177,12 @@ def add_commit_object(parent: bytes | None, message: str) -> bytes | None:
 
 # return the commit hash of the commit pointed to by head, if it exists
 # or None otherwise
-def get_head() -> bytes | None:
-    with open(".git/HEAD", "r") as f:
+def get_head(root: str) -> bytes | None:
+    with open(f"{root}/.git/HEAD", "r") as f:
         head = f.read().strip()
 
     if head.startswith("ref: "):
-        head = '.git/' + head[5:]
+        head = root + '/.git/' + head[5:]
         if not os.path.isfile(head):
             head = None
         else:
@@ -192,30 +192,30 @@ def get_head() -> bytes | None:
         head = binascii.a2b_hex(head)
     return head
 
-def update_head(commit):
+def update_head(commit, root: str):
     commit = binascii.hexlify(commit).decode()
-    with open(".git/HEAD", "r") as f:
+    with open(f"{root}/.git/HEAD", "r") as f:
         head = f.read().strip()
 
     if head.startswith("ref: "):
-        path_to_update = '.git/' + head[5:]
+        path_to_update = root + '/.git/' + head[5:]
     else:
-        path_to_update = '.git/HEAD'
+        path_to_update = root + '/.git/HEAD'
 
     with open(path_to_update, "w") as file_to_update:
         file_to_update.write(commit + '\n')
 
 
-def commit(message: str):
-    parent = get_head()
-    new_commit = add_commit_object(parent, message)
-    update_head(new_commit)
+def commit(options):
+    parent = get_head(options.root)
+    new_commit = add_commit_object(parent, options)
+    update_head(new_commit, options.root)
 
 
 
 def main(ops):
-    message = ops.message
+    ops.ignores = ignore.get_ignore(ops.root)
     try:
-        commit(message)
+        commit(ops)
     except ConfigError as e:
         print(e.args[0], file=sys.stderr)
