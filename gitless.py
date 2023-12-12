@@ -210,7 +210,7 @@ def commit(message: str):
 
 def main():
     init_if_necessary()
-    commit("Update commit functions to take a commit message")
+    commit("rename gen-repo.py to gitless.py")
 
 if __name__ == "__main__":
     main()
