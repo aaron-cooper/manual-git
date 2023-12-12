@@ -150,7 +150,7 @@ def add_commit_object(parent: bytes | None, message: str) -> bytes | None:
         commit_content += f"parent ".encode() + binascii.hexlify(parent) + b'\n'
     commit_content += f"author {user_name} <{user_email}> {curr_time} -0500\n".encode() # todo: use the user's real timezone
     commit_content += f"committer {user_name} <{user_email}> {curr_time} -0500\n".encode() # todo: use the user's real timezone
-    commit_content += "\n\n{message}\n".encode()
+    commit_content += f"\n\n{message}\n".encode()
 
     commit_content = bytes(f"commit {len(commit_content)}\0".encode() + commit_content)
     commit_hash = hash_array_of_bytes(commit_content)
