@@ -25,4 +25,11 @@ def __create_parser() -> argparse.ArgumentParser:
     config_parser.add_argument("section", help="Section that variable should fall under.")
     config_parser.add_argument("variable", help="The name of the variable to be set.")
     config_parser.add_argument("value", help="The value of the variable to be set.")
+
+    remote_parser = subparsers.add_parser("remote", help="utilities for managing remote repositories.")
+    remote_subparsers = remote_parser.add_subparsers(dest="remote_command", required=True)
+    remote_add_parser = remote_subparsers.add_parser("add", help="add a new remote")
+    remote_add_parser.add_argument("name", help="name of the remote repository")
+    remote_add_parser.add_argument("url", help="url of the remote repository")
+
     return parser

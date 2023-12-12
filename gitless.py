@@ -2,6 +2,7 @@ import os
 import options
 import commit
 import config
+import remote
 
 
 def init_if_necessary():
@@ -43,6 +44,8 @@ def main():
             commit.main(ops)
         case "config":
             config.main(ops)
+        case "remote":
+            remote.main(ops)
 
 if __name__ == "__main__":
     main()
