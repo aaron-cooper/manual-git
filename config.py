@@ -70,6 +70,15 @@ class Config:
                 for name in self.sections[section]:
                     print(f"\t{name} = {self.sections[section][name]}", file=f)
 
+    def get(self, section, name) -> str | None:
+        if section not in self.sections:
+            return None
+        if name not in self.sections[section]:
+            return None
+        return self.sections[section][name]
+
+class ConfigError(Exception):
+    pass
 
 def main(args):
     config_file_path = args.root + '/.git/config'

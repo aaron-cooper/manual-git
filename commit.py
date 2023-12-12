@@ -4,6 +4,9 @@ import binascii
 import zlib
 import stat
 import time
+import user
+from config import ConfigError
+import sys
 
 
 def init_if_necessary():
@@ -136,8 +139,9 @@ def get_time_info() -> (int, int):
 
 # Add all of the objects in the cwd and create a commit object referencing them.
 def add_commit_object(parent: bytes | None, message: str) -> bytes | None:
-    user_email = "30245107+aaron-cooper@users.noreply.github.com"
-    user_name = "Aaron Cooper" # maybe this should be python 🤔
+    user_name, user_email = user.get_user_info('.git/config')
+    if not user_name or not user_email:
+        raise ConfigError("Username and email missing, please set locally to allow creating commits.")
 
     root_tree = add_tree_object(".")
     if not root_tree:
@@ -211,4 +215,7 @@ def commit(message: str):
 
 def main(ops):
     message = ops.message
-    commit(message)
+    try:
+        commit(message)
+    except ConfigError as e:
+        print(e.args[0], file=sys.stderr)
