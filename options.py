@@ -5,12 +5,16 @@ class CommitArgs:
         self.message = ""
 
 def from_argv() -> CommitArgs:
-    return __parser().parse_args()
+    return __create_parser().parse_args()
 
 def from_list(args: list[str]) -> CommitArgs:
-    return __parser().parse_args(args)
+    return __create_parser().parse_args(args)
 
-def __parser() -> argparse.ArgumentParser:
+def __create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
-    parser.add_argument('message', default=None, help="Your commit message.")
+
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    commit_parser = subparsers.add_parser("commit", help="create a commit reflecting the state of the repo.")
+    commit_parser.add_argument("message", default=None, help="Your commit message.")
     return parser
