@@ -1,4 +1,4 @@
-# Gitless
+# Manual Git
 ### I made this repository without using Git!
 Or more specifically, my local copy of this repository, which was later pushed to GitHub, was created without using Git.
 
@@ -21,7 +21,7 @@ My code can:
 - Update HEAD when a commit is made, including updating whatever branch HEAD references
 - Allow the user to add basic configs to the repository (the user must set their name and email to create commits)
 - Allow the user to add a remote
-- Ignore things in the .gitlessignore file (does not work the same or as well as a .gitignore)
+- Ignore things in the .manualgitignore file (does not work the same or as well as a .gitignore)
 
 Note: even though this repository is flat, my code can handle committing tree directory structures just fine.
 
