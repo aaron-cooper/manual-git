@@ -1,4 +1,5 @@
 import re
+import sys
 
 class Config:
     def __init__(self):
@@ -7,7 +8,7 @@ class Config:
     @staticmethod
     def from_file(path: str):
         section_re = re.compile(r"^\s*\[(?P<section>[a-zA-Z0-9\-\.]+)\]\s*$")
-        assignment_re = re.compile(r"^\s*(?P<name>[a-zA-Z][a-zA-Z0-9\-]*)\s*=\s*(?P<value>\S+)\s*$")
+        assignment_re = re.compile(r"^\s*(?P<name>[a-zA-Z][a-zA-Z0-9\-]*)\s*=\s*(?P<value>\S|\S.*\S)\s*$")
         empty_line_re = re.compile(r"^\s*$")
         curr_section = None
         config = Config()
@@ -18,7 +19,7 @@ class Config:
                 elif result := assignment_re.search(line):
                     if not curr_section:
                         raise SyntaxError("Invalid config file: assignment appears before any section.")
-                    config.set_config(curr_section, result.group('name'), result.group('value'))
+                    config.set_config(curr_section, result.group('name').lower(), result.group('value'))
                 elif empty_line_re.fullmatch(line):
                     "do nothing"
                 else:
@@ -26,11 +27,28 @@ class Config:
         return config
 
     def set_config(self, section, name, value):
+        self.verify_config(section, name, value)
+        section = section.lower()
+        name = name.lower()
         if section not in self.sections:
             self.sections[section] = {}
         self.sections[section][name] = value
 
+    def verify_config(self, section, name, value):
+        section_pattern = r"^[a-zA-Z\-\.]+$"
+        if not re.match(section_pattern, section):
+            raise ValueError("section", f"Section must match the pattern: \\{section_pattern}\\")
+        name_pattern = r"^[a-zA-Z\.]+$"
+        if not re.match(name_pattern, name):
+            raise ValueError("name", f"Name must match the pattern: \\{name_pattern}\\")
+        if not re.match(r"^(\S|\S.*\S)+$", value):
+            raise ValueError("value", f"Value may not begin or end with white space.")
+
+
+
     def drop_config(self, section, name):
+        section = section.lower()
+        name = name.lower()
         if section not in self.sections:
             return
         if name not in self.sections[section]:
@@ -45,3 +63,14 @@ class Config:
                 print(f"[{section}]", file=f)
                 for name in self.sections[section]:
                     print(f"\t{name} = {self.sections[section][name]}", file=f)
+
+
+def main(args):
+    config_file_path = args.root + '/.git/config'
+    config = Config.from_file(config_file_path)
+    try:
+        config.set_config(args.section, args.variable, args.value)
+        config.save_to_file(config_file_path)
+    except ValueError as e:
+        print(e.args[1], file=sys.stderr)
+        exit(1)

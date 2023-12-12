@@ -1,6 +1,7 @@
 import os
 import options
 import commit
+import config
 
 
 def init_if_necessary():
@@ -40,6 +41,8 @@ def main():
     match ops.command:
         case "commit":
             commit.main(ops)
+        case "config":
+            config.main(ops)
 
 if __name__ == "__main__":
     main()
