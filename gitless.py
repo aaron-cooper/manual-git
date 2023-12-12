@@ -73,10 +73,11 @@ def add_blob_object(path: str) -> bytes:
 # subdirectories don't contain any files, no tree object is created and None
 # is returned
 def add_tree_object(path: str) -> bytes | None:
+    ignore_paths = [".git", "__pycache__"]
     objects = []
     dir_content = os.listdir(path)
     dir_content.sort()
-    for entry_name in filter(lambda x: x != ".git", dir_content):
+    for entry_name in filter(lambda x: x not in ignore_paths, dir_content):
         p = path + '/' + entry_name
         if os.path.isdir(p):
             if tree := add_tree_object(p):
@@ -210,7 +211,7 @@ def commit(message: str):
 
 def main():
     init_if_necessary()
-    commit("rename gen-repo.py to gitless.py")
+    commit("ignore __pycache__ dirs")
 
 if __name__ == "__main__":
     main()
