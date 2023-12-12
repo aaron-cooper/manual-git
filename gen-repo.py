@@ -134,7 +134,7 @@ def get_time_info() -> (int, int):
     return (int(time.time()), offset)
 
 # Add all of the objects in the cwd and create a commit object referencing them.
-def add_commit_object(parent: bytes | None) -> bytes | None:
+def add_commit_object(parent: bytes | None, message: str) -> bytes | None:
     user_email = "30245107+aaron-cooper@users.noreply.github.com"
     user_name = "Aaron Cooper" # maybe this should be python 🤔
 
@@ -150,7 +150,7 @@ def add_commit_object(parent: bytes | None) -> bytes | None:
         commit_content += f"parent ".encode() + binascii.hexlify(parent) + b'\n'
     commit_content += f"author {user_name} <{user_email}> {curr_time} -0500\n".encode() # todo: use the user's real timezone
     commit_content += f"committer {user_name} <{user_email}> {curr_time} -0500\n".encode() # todo: use the user's real timezone
-    commit_content += "\ntodo: let the user specify commit messages\n".encode()
+    commit_content += "\n\n{message}\n".encode()
 
     commit_content = bytes(f"commit {len(commit_content)}\0".encode() + commit_content)
     commit_hash = hash_array_of_bytes(commit_content)
@@ -201,16 +201,16 @@ def update_head(commit):
         file_to_update.write(commit + '\n')
 
 
-def commit():
+def commit(message: str):
     parent = get_head()
-    new_commit = add_commit_object(parent)
+    new_commit = add_commit_object(parent, message)
     update_head(new_commit)
 
 
 
 def main():
     init_if_necessary()
-    commit()
+    commit("Update commit functions to take a commit message")
 
 if __name__ == "__main__":
     main()
