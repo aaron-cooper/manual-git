@@ -4,6 +4,7 @@ import binascii
 import zlib
 import stat
 import time
+import options
 
 
 def init_if_necessary():
@@ -210,8 +211,10 @@ def commit(message: str):
 
 
 def main():
+    ops = options.from_argv()
     init_if_necessary()
-    commit("ignore __pycache__ dirs")
+    message = ops.message
+    commit(message)
 
 if __name__ == "__main__":
     main()
